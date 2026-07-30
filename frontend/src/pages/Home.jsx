@@ -52,10 +52,10 @@ const galleryImages = [
 ───────────────────────────────────────────────────────────────── */
 const promoVideos = [
   {
-    id: "SkUXFCIjXiI",
+    id: "o2XRHyGSrNI",
     tag: "Restaurant Tour",
     title: "Welcome to Dosa Atelier",
-    desc: "Take a tour of our restaurant in CBD Belapur — the ambiance, the warmth, and the hospitality.",
+    desc: "Take a tour of our restaurant in Matunga East — the ambiance, the warmth, and the hospitality.",
   },
   {
     id: "HpQzYMVCeFw",
@@ -64,7 +64,7 @@ const promoVideos = [
     desc: "Watch our chefs craft traditional South Indian dishes with the finest spices and recipes.",
   },
   {
-    id: "fECzOAmRsso",
+    id: "QePHJBeiXjc",
     tag: "Dining Experience",
     title: "A Feast at Dosa Atelier",
     desc: "From crispy dosas to hearty meals — experience authentic South Indian dining at its finest.",
@@ -101,8 +101,16 @@ const services = [
   { emoji: "📦", title: "Home Delivery",  desc: "Hot, freshly prepared meals delivered to your doorstep." },
 ];
 
+// ── Exact coordinates for Deodhar Road, Matunga East, Mumbai, MH 400019 ──
+const RESTAURANT_LAT = 19.0262;
+const RESTAURANT_LNG = 72.8521;
+
 const contactInfo = [
-  { Icon: MapPin, title: "Our Location", detail: "CBD Belapur, Navi Mumbai, Maharashtra" },
+  {
+    Icon: MapPin,
+    title: "Our Location",
+    detail: `Deodhar Road, Matunga East, Mumbai`
+  },
   { Icon: Phone,  title: "Call Us",      detail: "+91 98765 43210" },
   { Icon: Mail,   title: "Email Us",     detail: "hello@dosaatelier.in" },
   { Icon: Clock,  title: "Hours",        detail: "Mon – Fri: 7 AM – 10:30 PM · Sat – Sun: 8 AM – 11 PM" },
@@ -565,7 +573,7 @@ const Home = () => {
               <em className="text-orange-500 not-italic">Traditional Recipes.</em>
             </h2>
             <p className="text-neutral-400 text-base leading-[1.9] mb-4">
-              Nestled in the heart of CBD Belapur, we bring you an authentic dining experience celebrating flavors from Kerala, Tamil Nadu, Karnataka, and Andhra Pradesh.
+              Nestled in the heart of Deodhar Road, we bring you an authentic dining experience celebrating flavors from Kerala, Tamil Nadu, Karnataka, and Andhra Pradesh.
             </p>
             <p className="text-neutral-400 text-base leading-[1.9] mb-10">
               Every dish tells a story — of grandmothers' kitchens, monsoon evenings, and the spice trails of the Deccan Plateau.
@@ -768,17 +776,18 @@ const Home = () => {
                   </div>
                 </div>
               ))}
-              {/* ♿ Google Maps iframe with descriptive title */}
+              {/* ♿ Google Maps iframe with descriptive title — pinned to the same
+                  coordinates listed above (Deodhar Road, Matunga East, Mumbai) */}
               <div className="rounded-2xl overflow-hidden h-56 border border-white/5">
-              <iframe
-              title="Dosa Atelier location map – CBD Belapur, Navi Mumbai"
-              src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3772.3010808516046!2d73.03048397497552!3d19.006450082183886!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3be7c3601f273e93%3A0x61cd7ee22f689ac5!2sSouthern%20Tales!5e0!3m2!1sen!2sin!4v1772808306990!5m2!1sen!2sin"
-              className="w-full h-full border-0 grayscale invert brightness-[0.8] contrast-[1.2]"
-              allowFullScreen
-              loading="lazy"
-              referrerPolicy="no-referrer-when-downgrade"
-              />
-             </div>
+                <iframe
+                  title="Dosa Atelier location map – Deodhar Road, Matunga East, Mumbai"
+                  src={`https://www.google.com/maps?q=${RESTAURANT_LAT},${RESTAURANT_LNG}&z=16&output=embed`}
+                  className="w-full h-full border-0 grayscale invert brightness-[0.8] contrast-[1.2]"
+                  allowFullScreen
+                  loading="lazy"
+                  referrerPolicy="no-referrer-when-downgrade"
+                />
+              </div>
             </Reveal>
           </div>
         </div>

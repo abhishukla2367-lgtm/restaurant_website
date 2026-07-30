@@ -8,8 +8,7 @@ import { AuthContext } from "../context/AuthContext";
 import { useCart } from "../context/CartContext";
 
 // ─── CLOUDINARY LOGO CONFIG ──────────────────────────────────────────────────
-const LOGO_URL = "https://res.cloudinary.com/db2vju4mv/image/upload/f_auto,q_auto,w_120,e_colorize,co_white,e_brightness:50/v1772948791/dosa_atelier_logo_imwqjv.png";
-
+const LOGO_URL = "https://res.cloudinary.com/db2vju4mv/image/upload/v1785425213/dosa_atelier_icon_oop9op.png";
 const PHONE = "+919876543210";
 const dial = () => window.open(`tel:${PHONE}`, "_self");
 
@@ -120,7 +119,33 @@ function CallModal({ onClose }) {
   );
 }
 
-
+// ─── Animated logo mark ─────────────────────────────────────────────────────
+function DosaLogoMark() {
+  return (
+    <span className="relative w-14 h-14 rounded-full ring-2 ring-[#f5c27a] bg-[#1f1b16] flex items-center justify-center shrink-0">
+      <svg viewBox="0 0 150 150" width="38" height="38" aria-hidden="true" className="overflow-visible">
+        <g className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity duration-500">
+          <path d="M60 28 Q56 20 62 14 Q68 8 64 0" fill="none" stroke="#f5c27a" strokeWidth="2" strokeLinecap="round" opacity="0.6" />
+          <path d="M75 28 Q71 20 77 14 Q83 8 79 0" fill="none" stroke="#f5c27a" strokeWidth="2" strokeLinecap="round" opacity="0.6" />
+          <path d="M90 28 Q86 20 92 14 Q98 8 94 0" fill="none" stroke="#f5c27a" strokeWidth="2" strokeLinecap="round" opacity="0.6" />
+        </g>
+        <g
+          className="transition-transform duration-700 ease-out group-hover:rotate-[360deg] group-focus-within:rotate-[360deg]"
+          style={{ transformOrigin: "50% 50%" }}
+        >
+          <path
+            d="M75 75 m0 -46 a46 46 0 1 1 -32.5 78.5 a34 34 0 1 1 24 -58 a22 22 0 1 1 -15.5 37.5 a10 10 0 1 1 7 -17"
+            fill="none"
+            stroke="#f5c27a"
+            strokeWidth="7"
+            strokeLinecap="round"
+          />
+          <circle cx="75" cy="75" r="4.5" fill="#f5c27a" />
+        </g>
+      </svg>
+    </span>
+  );
+}
 
 // ─── Header ───────────────────────────────────────────────────────────────────
 const Header = () => {
@@ -165,25 +190,17 @@ const Header = () => {
         <div className="relative flex items-center justify-between px-6 lg:px-12 py-5 bg-[#1f1b16] shadow-lg">
 
           {/* LOGO SECTION */}
-          <Link to="/" className="flex items-center gap-3 no-underline" aria-label="Dosa Atelier – Home">
-            <img
-              src={LOGO_URL}
-              alt="Dosa Atelier Restaurant logo"
-              width={56}
-              height={56}
-              loading="eager"
-              fetchpriority="high"
-              className="w-14 h-14 rounded-full object-cover ring-2 ring-[#f5c27a] filter brightness-0 invert"
-            />
-            <div className="flex flex-col leading-tight">
-              <span className="text-2xl font-black text-white tracking-tight">
-                Dosa <span className="text-[#f5c27a]">Atelier</span>
-              </span>
-              <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#f5c27a]/70">
-                Authentic Southern Cuisine
-              </span>
-            </div>
-          </Link>
+          <Link to="/" className="flex items-center gap-3 no-underline group" aria-label="Dosa Atelier – Home">
+  <DosaLogoMark />
+  <div className="flex flex-col leading-tight">
+    <span className="text-2xl font-black text-white tracking-tight">
+      Dosa <span className="text-[#f5c27a]">Atelier</span>
+    </span>
+    <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#f5c27a]/70">
+      Authentic Southern Cuisine
+    </span>
+  </div>
+</Link>
 
           {/* DESKTOP NAV — absolutely centered */}
           <nav className="hidden lg:flex items-center gap-7 absolute left-1/2 -translate-x-1/2" aria-label="Main navigation">
