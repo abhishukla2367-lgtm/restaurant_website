@@ -254,8 +254,8 @@ const Contact = () => {
           {/* RIGHT: Info Cards + Map */}
           <div className="flex flex-col gap-4">
             <InfoCard icon={<MapPin size={20} className="text-[#f5c27a]" aria-hidden="true" />} title="Visit Us">
-              <p className="text-white font-semibold text-sm leading-snug">Sector 15, CBD Belapur</p>
-              <p className="text-zinc-400 text-sm mt-0.5">Navi Mumbai, Maharashtra 400614</p>
+              <p className="text-white font-semibold text-sm leading-snug">Deodhar Road, Matunga East</p>
+              <p className="text-zinc-400 text-sm mt-0.5">Mumbai, Maharashtra 400019</p>
               <p className="text-zinc-500 text-sm mt-0.5">India</p>
             </InfoCard>
             <InfoCard icon={<Phone size={20} className="text-[#f5c27a]" aria-hidden="true" />} title="Call Us">
@@ -273,15 +273,15 @@ const Contact = () => {
               </div>
             </InfoCard>
             <div className="relative rounded-2xl overflow-hidden border border-zinc-800/80 h-64 group">
-              <iframe
-              title="Dosa Atelier location map – CBD Belapur, Navi Mumbai"
-              src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3772.3010808516046!2d73.03048397497552!3d19.006450082183886!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3be7c3601f273e93%3A0x61cd7ee22f689ac5!2sSouthern%20Tales!5e0!3m2!1sen!2sin!4v1772808306990!5m2!1sen!2sin"
-              className="w-full h-full border-0 grayscale invert brightness-[0.8] contrast-[1.2]"
-              allowFullScreen
-              loading="lazy"
-              referrerPolicy="no-referrer-when-downgrade"
-              />
-            </div>
+  <iframe
+    title="Dosa Atelier location map – Deodhar Road, Matunga East, Mumbai"
+    src="https://www.google.com/maps?q=Deodhar+Road,+Matunga+East,+Mumbai,+Maharashtra+400019,+India&output=embed"
+    className="w-full h-full border-0 grayscale invert brightness-[0.8] contrast-[1.2]"
+    allowFullScreen
+    loading="lazy"
+    referrerPolicy="no-referrer-when-downgrade"
+  />
+</div>
           </div>
         </div>
       </div>

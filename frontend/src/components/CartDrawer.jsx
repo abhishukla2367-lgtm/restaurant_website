@@ -363,7 +363,7 @@ const CartDrawer = () => {
                   </div>
                   <div className="space-y-3">
                     <input type="text"
-                      placeholder="Delivery address (e.g. CBD Belapur, Navi Mumbai)"
+                      placeholder="Delivery address (e.g. Deodhar Road, Matunga East, Mumbai)"
                       value={userAddressState}
                       onChange={(e) => setUserAddressState(e.target.value)}
                       className={fieldCls} />

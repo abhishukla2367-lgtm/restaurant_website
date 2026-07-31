@@ -100,7 +100,7 @@ function CallModal({ onClose }) {
             <div>
               <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1">Location</p>
               <p className="text-sm font-bold text-white">Dosa Atelier Restaurant</p>
-              <p className="text-xs text-gray-400 mt-0.5">CBD Belapur, Navi Mumbai, Maharashtra</p>
+              <p className="text-xs text-gray-400 mt-0.5">Deodhar Road, Matunga East, Mumbai, Maharashtra</p>
             </div>
           </div>
         </div>

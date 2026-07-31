@@ -21,12 +21,12 @@ const RecenterMap = ({ position }) => {
 };
 
 const LiveTrackingMap = () => {
-  // Dosa Atelier — Shop No.9,10,11, Sector 15, CBD Belapur, Navi Mumbai
-  const restaurantLocation = [19.006450, 73.030484];
+  // Dosa Atelier — Deodhar Road, Matunga East, Mumbai, MH 400019
+  const restaurantLocation = [19.0262, 72.8521];
 
   const [deliveryLocation, setDeliveryLocation] = useState([
-    19.010450,
-    73.034484,
+    19.0302,
+    72.8561,
   ]);
 
   // Simulate live movement toward the restaurant
@@ -64,7 +64,7 @@ const LiveTrackingMap = () => {
 
           {/* Dosa Atelier Restaurant */}
           <Marker position={restaurantLocation}>
-            <Popup>🍽️ Dosa Atelier Restaurant<br />Sector 15, CBD Belapur, Navi Mumbai</Popup>
+            <Popup>🍽️ Dosa Atelier Restaurant<br />Deodhar Road, Matunga East, Mumbai, MH 400019</Popup>
           </Marker>
 
           {/* Delivery Partner */}

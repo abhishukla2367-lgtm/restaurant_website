@@ -254,7 +254,7 @@ const OrderSummaryPage = () => {
                 <div className="space-y-2">
                   <label className={labelCls}><FaMapMarkerAlt /> Pickup Location</label>
                   <div className="w-full bg-gray-900/50 border border-dashed border-gray-700 p-3 rounded-xl text-white text-sm">
-                    Sector 15, CBD Belapur, Navi Mumbai, Maharashtra 400614
+                    Deodhar Road, Matunga East, Mumbai, Maharashtra 400019
                   </div>
                 </div>
                 {/* ✅ Scheduled date */}
