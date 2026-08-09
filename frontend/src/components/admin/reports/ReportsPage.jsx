@@ -1,32 +1,31 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useImperativeHandle, forwardRef } from "react";
 import * as XLSX from "xlsx";
 import API from "../../../api/axiosConfig";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
-  Tooltip, Area, AreaChart,
+  Tooltip, Area, AreaChart, ResponsiveContainer,
 } from "recharts";
 import {
   TrendingUp, TrendingDown, ShoppingBag, CalendarCheck,
   IndianRupee, Award, BarChart2, ChevronRight, Minus, Package,
+  Search, ArrowUpDown, ArrowUp, ArrowDown,
 } from "lucide-react";
 
 const TABS = ["Weekly", "Monthly", "Annual"];
+const BAR_COLORS = ["#f5c27a", "#60a5fa", "#a78bfa", "#34d399", "#f87171", "#fb923c", "#38bdf8"];
 
-function ChartBox({ height = 220, children }) {
-  const ref = useRef(null);
-  const [width, setWidth] = useState(0);
-  useEffect(() => {
-    if (!ref.current) return;
-    setWidth(ref.current.offsetWidth);
-    const ro = new ResizeObserver(() => ref.current && setWidth(ref.current.offsetWidth));
-    ro.observe(ref.current);
-    return () => ro.disconnect();
-  }, []);
-  return (
-    <div ref={ref} style={{ width: "100%", height }}>
-      {width > 0 && children(width)}
-    </div>
-  );
+const ALIGN_CLASSES = {
+  left: "text-left",
+  center: "text-center",
+  right: "text-right",
+};
+
+// Safe opacity helper for hex colors
+function alphaColor(hex, alphaHex = "18") {
+  if (typeof hex === "string" && hex.startsWith("#") && hex.length === 7) {
+    return `${hex}${alphaHex}`;
+  }
+  return hex;
 }
 
 function CustomTooltip({ active, payload, label }) {
@@ -59,7 +58,7 @@ function StatCard({ label, value, sub, icon: Icon, color, bg, border, delay = 0,
           <p className="text-[11px] text-[#555] mt-2 font-medium">{sub}</p>
         </div>
         <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-          style={{ background: `${color}18`, border: `1px solid ${color}30` }}>
+          style={{ background: alphaColor(color, "18"), border: `1px solid ${alphaColor(color, "30")}` }}>
           <Icon size={18} style={{ color }} />
         </div>
       </div>
@@ -82,12 +81,15 @@ function StatCard({ label, value, sub, icon: Icon, color, bg, border, delay = 0,
   );
 }
 
-function Section({ title, subtitle, children }) {
+function Section({ title, subtitle, headerAction, children }) {
   return (
     <div className="rounded-2xl overflow-hidden border border-[#1f1f1f] bg-[#0d0d0d]">
-      <div className="px-6 py-4 border-b border-[#1a1a1a]">
-        <h3 className="text-sm font-black text-[#f1f1f1]">{title}</h3>
-        {subtitle && <p className="text-[10px] text-[#555] mt-0.5 font-medium uppercase tracking-widest">{subtitle}</p>}
+      <div className="px-6 py-4 border-b border-[#1a1a1a] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <h3 className="text-sm font-black text-[#f1f1f1]">{title}</h3>
+          {subtitle && <p className="text-[10px] text-[#555] mt-0.5 font-medium uppercase tracking-widest">{subtitle}</p>}
+        </div>
+        {headerAction}
       </div>
       {children}
     </div>
@@ -109,12 +111,19 @@ function Skeleton() {
   );
 }
 
-function TH({ children, align = "left" }) {
-  return <th className={`px-5 py-3.5 text-[9px] font-black uppercase tracking-[0.25em] text-[#444] text-${align}`}>{children}</th>;
+function TH({ children, align = "left", onClick, sortable = false }) {
+  return (
+    <th 
+      onClick={onClick}
+      className={`px-5 py-3.5 text-[9px] font-black uppercase tracking-[0.25em] text-[#444] ${ALIGN_CLASSES[align]} ${sortable ? "cursor-pointer select-none hover:text-[#888] transition-colors" : ""}`}
+    >
+      {children}
+    </th>
+  );
 }
 
 function TD({ children, align = "left", className = "" }) {
-  return <td className={`px-5 py-4 text-${align} ${className}`}>{children}</td>;
+  return <td className={`px-5 py-4 ${ALIGN_CLASSES[align]} ${className}`}>{children}</td>;
 }
 
 function EmptyChartState({ message = "No data for this period" }) {
@@ -128,11 +137,16 @@ function EmptyChartState({ message = "No data for this period" }) {
   );
 }
 
-export default function ReportsPage({ downloadReportRef }) {
+const ReportsPage = forwardRef((props, ref) => {
   const [activeTab, setActiveTab] = useState("Weekly");
   const [data, setData]           = useState(null);
   const [loading, setLoading]     = useState(true);
   const [error, setError]         = useState(false);
+
+  // Interactive sorting & search states
+  const [searchQuery, setSearchQuery] = useState("");
+  const [sortField, setSortField]     = useState("totalRevenue");
+  const [sortOrder, setSortOrder]     = useState("desc");
 
   useEffect(() => {
     const fetchReport = async () => {
@@ -153,26 +167,23 @@ export default function ReportsPage({ downloadReportRef }) {
     fetchReport();
   }, [activeTab]);
 
-  // ── Register Download Report handler ──────────────────────────────────────
   const exportToExcel = useCallback(() => {
     if (!data) return alert("Report data not loaded yet. Please wait.");
 
     const dateSlug = new Date().toISOString().slice(0, 10);
     const wb = XLSX.utils.book_new();
 
-    // Sheet 1: Summary
     const summaryRows = [
-      { "Metric": "Period",           "Value": activeTab },
+      { "Metric": "Period",            "Value": activeTab },
       { "Metric": "Total Revenue (₹)", "Value": data.totalRevenue || 0 },
-      { "Metric": "Total Orders",     "Value": data.totalOrders || 0 },
-      { "Metric": "Reservations",     "Value": data.totalReservations || 0 },
+      { "Metric": "Total Orders",      "Value": data.totalOrders || 0 },
+      { "Metric": "Reservations",      "Value": data.totalReservations || 0 },
       { "Metric": "Avg Order Value (₹)", "Value": data.avgOrderValue || 0 },
     ];
     const wsSummary = XLSX.utils.json_to_sheet(summaryRows);
     wsSummary["!cols"] = [{ wch: 24 }, { wch: 18 }];
     XLSX.utils.book_append_sheet(wb, wsSummary, "Summary");
 
-    // Sheet 2: Breakdown
     if (data.breakdown?.length > 0) {
       const breakdownRows = data.breakdown.map((row) => ({
         "Period":        row.period,
@@ -188,7 +199,6 @@ export default function ReportsPage({ downloadReportRef }) {
       XLSX.utils.book_append_sheet(wb, wsBreakdown, "Breakdown");
     }
 
-    // Sheet 3: Top Items
     if (data.topItems?.length > 0) {
       const itemRows = data.topItems.map((item, idx) => ({
         "Rank":         idx + 1,
@@ -207,11 +217,39 @@ export default function ReportsPage({ downloadReportRef }) {
     XLSX.writeFile(wb, `dosaatelier_Report_${activeTab}_${dateSlug}.xlsx`);
   }, [data, activeTab]);
 
-  useEffect(() => {
-    if (downloadReportRef) downloadReportRef.current = exportToExcel;
-  }, [exportToExcel, downloadReportRef]);
+  // Standard React Imperative Handle pattern for triggering export from parent
+  useImperativeHandle(ref, () => ({
+    exportToExcel,
+  }));
 
-  const BAR_COLORS = ["#f5c27a", "#60a5fa", "#a78bfa", "#34d399", "#f87171", "#fb923c", "#38bdf8"];
+  const handleSort = (field) => {
+    if (sortField === field) {
+      setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+    } else {
+      setSortField(field);
+      setSortOrder("desc");
+    }
+  };
+
+  const filteredAndSortedItems = React.useMemo(() => {
+    if (!data?.topItems) return [];
+    
+    return data.topItems
+      .filter((item) => 
+        item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (item.category && item.category.toLowerCase().includes(searchQuery.toLowerCase()))
+      )
+      .sort((a, b) => {
+        let valA = a[sortField];
+        let valB = b[sortField];
+        if (typeof valA === "string") valA = valA.toLowerCase();
+        if (typeof valB === "string") valB = valB.toLowerCase();
+
+        if (valA < valB) return sortOrder === "asc" ? -1 : 1;
+        if (valA > valB) return sortOrder === "asc" ? 1 : -1;
+        return 0;
+      });
+  }, [data?.topItems, searchQuery, sortField, sortOrder]);
 
   const stats = data ? [
     { label: "Total Revenue", icon: IndianRupee, value: `₹${(data.totalRevenue || 0).toLocaleString("en-IN")}`, sub: "from confirmed orders", color: "#34d399", bg: "#0d1f18", border: "#1a3a2a", trend: data.revenueTrend },
@@ -219,6 +257,11 @@ export default function ReportsPage({ downloadReportRef }) {
     { label: "Reservations",  icon: CalendarCheck, value: data.totalReservations || 0, sub: "tables booked", color: "#60a5fa", bg: "#0d1829", border: "#1a2e4a", trend: data.reservationsTrend },
     { label: "Avg Order Value", icon: Award, value: `₹${(data.avgOrderValue || 0).toLocaleString("en-IN")}`, sub: "per order", color: "#a78bfa", bg: "#150d29", border: "#2a1a4a", trend: data.avgTrend },
   ] : [];
+
+  const RenderSortIcon = ({ field }) => {
+    if (sortField !== field) return <ArrowUpDown size={10} className="inline ml-1 text-[#444]" />;
+    return sortOrder === "asc" ? <ArrowUp size={10} className="inline ml-1 text-[#f5c27a]" /> : <ArrowDown size={10} className="inline ml-1 text-[#f5c27a]" />;
+  };
 
   return (
     <>
@@ -260,43 +303,39 @@ export default function ReportsPage({ downloadReportRef }) {
             {data.breakdown?.length > 0 ? (
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
                 <Section title="Revenue Trend" subtitle={`${activeTab} breakdown`}>
-                  <div className="p-5">
-                    <ChartBox height={210}>
-                      {(w) => (
-                        <AreaChart width={w} height={210} data={data.breakdown} margin={{ top: 5, right: 5, left: 0, bottom: 0 }}>
-                          <defs>
-                            <linearGradient id="revGrad" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="5%"  stopColor="#34d399" stopOpacity={0.25} />
-                              <stop offset="95%" stopColor="#34d399" stopOpacity={0} />
-                            </linearGradient>
-                          </defs>
-                          <CartesianGrid strokeDasharray="3 3" stroke="#1a1a1a" vertical={false} />
-                          <XAxis dataKey="period" stroke="#2a2a2a" tick={{ fill: "#555", fontSize: 10 }} />
-                          <YAxis stroke="#2a2a2a" tick={{ fill: "#555", fontSize: 10 }} width={50}
-                            tickFormatter={(v) => `₹${v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v}`} />
-                          <Tooltip content={<CustomTooltip />} />
-                          <Area type="monotone" dataKey="revenue" name="Revenue" stroke="#34d399" strokeWidth={2}
-                            fill="url(#revGrad)" dot={{ r: 3, fill: "#34d399", strokeWidth: 0 }} activeDot={{ r: 5, fill: "#34d399" }} />
-                        </AreaChart>
-                      )}
-                    </ChartBox>
+                  <div className="p-5 h-[230px] w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={data.breakdown} margin={{ top: 5, right: 5, left: 0, bottom: 0 }}>
+                        <defs>
+                          <linearGradient id="revGrad" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%"  stopColor="#34d399" stopOpacity={0.25} />
+                            <stop offset="95%" stopColor="#34d399" stopOpacity={0} />
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#1a1a1a" vertical={false} />
+                        <XAxis dataKey="period" stroke="#2a2a2a" tick={{ fill: "#555", fontSize: 10 }} />
+                        <YAxis stroke="#2a2a2a" tick={{ fill: "#555", fontSize: 10 }} width={50}
+                          tickFormatter={(v) => `₹${v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v}`} />
+                        <Tooltip content={<CustomTooltip />} />
+                        <Area type="monotone" dataKey="revenue" name="Revenue" stroke="#34d399" strokeWidth={2}
+                          fill="url(#revGrad)" dot={{ r: 3, fill: "#34d399", strokeWidth: 0 }} activeDot={{ r: 5, fill: "#34d399" }} />
+                      </AreaChart>
+                    </ResponsiveContainer>
                   </div>
                 </Section>
 
                 <Section title="Orders & Reservations" subtitle="side by side">
-                  <div className="p-5">
-                    <ChartBox height={210}>
-                      {(w) => (
-                        <BarChart width={w} height={210} data={data.breakdown} margin={{ top: 5, right: 5, left: 0, bottom: 0 }} barGap={4}>
-                          <CartesianGrid strokeDasharray="3 3" stroke="#1a1a1a" vertical={false} />
-                          <XAxis dataKey="period" stroke="#2a2a2a" tick={{ fill: "#555", fontSize: 10 }} />
-                          <YAxis stroke="#2a2a2a" tick={{ fill: "#555", fontSize: 10 }} />
-                          <Tooltip content={<CustomTooltip />} />
-                          <Bar dataKey="orders"       name="Orders"       fill="#f5c27a" radius={[4, 4, 0, 0]} maxBarSize={28} />
-                          <Bar dataKey="reservations" name="Reservations" fill="#60a5fa" radius={[4, 4, 0, 0]} maxBarSize={28} />
-                        </BarChart>
-                      )}
-                    </ChartBox>
+                  <div className="p-5 h-[230px] w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={data.breakdown} margin={{ top: 5, right: 5, left: 0, bottom: 0 }} barGap={4}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#1a1a1a" vertical={false} />
+                        <XAxis dataKey="period" stroke="#2a2a2a" tick={{ fill: "#555", fontSize: 10 }} />
+                        <YAxis stroke="#2a2a2a" tick={{ fill: "#555", fontSize: 10 }} />
+                        <Tooltip content={<CustomTooltip />} />
+                        <Bar dataKey="orders"       name="Orders"       fill="#f5c27a" radius={[4, 4, 0, 0]} maxBarSize={28} />
+                        <Bar dataKey="reservations" name="Reservations" fill="#60a5fa" radius={[4, 4, 0, 0]} maxBarSize={28} />
+                      </BarChart>
+                    </ResponsiveContainer>
                   </div>
                 </Section>
               </div>
@@ -306,28 +345,51 @@ export default function ReportsPage({ downloadReportRef }) {
               </Section>
             )}
 
-            <Section title="Top Selling Items" subtitle={`best performers this ${activeTab.toLowerCase()} period`}>
-              {data.topItems?.length > 0 ? (
+            <Section 
+              title="Top Selling Items" 
+              subtitle={`best performers this ${activeTab.toLowerCase()} period`}
+              headerAction={
+                data.topItems?.length > 0 && (
+                  <div className="relative">
+                    <Search size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#555]" />
+                    <input 
+                      type="text" 
+                      placeholder="Search items..." 
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="bg-[#141414] border border-[#222] text-[#f1f1f1] text-xs rounded-lg pl-8 pr-3 py-1.5 focus:outline-none focus:border-[#f5c27a] transition-colors w-full sm:w-48"
+                    />
+                  </div>
+                )
+              }
+            >
+              {filteredAndSortedItems.length > 0 ? (
                 <div className="overflow-x-auto">
                   <table className="w-full">
                     <thead>
                       <tr className="border-b border-[#1a1a1a]">
                         <TH align="center">#</TH>
                         <TH align="center">Image</TH>
-                        <TH align="left">Item Name</TH>
-                        <TH align="center">Qty Sold</TH>
-                        <TH align="right">Revenue</TH>
+                        <TH align="left" sortable onClick={() => handleSort("name")}>
+                          Item Name <RenderSortIcon field="name" />
+                        </TH>
+                        <TH align="center" sortable onClick={() => handleSort("totalQty")}>
+                          Qty Sold <RenderSortIcon field="totalQty" />
+                        </TH>
+                        <TH align="right" sortable onClick={() => handleSort("totalRevenue")}>
+                          Revenue <RenderSortIcon field="totalRevenue" />
+                        </TH>
                         <TH align="right">Share</TH>
                       </tr>
                     </thead>
                     <tbody>
-                      {data.topItems.map((item, idx) => {
+                      {filteredAndSortedItems.map((item, idx) => {
                         const maxRev = Math.max(...data.topItems.map((i) => i.totalRevenue));
                         const pct    = maxRev > 0 ? Math.round((item.totalRevenue / maxRev) * 100) : 0;
                         const unit   = item.unit || "pcs";
                         return (
-                          <tr key={idx} className="border-b border-[#131313] hover:bg-[#111] transition-colors group"
-                            style={{ animation: `cardIn 0.4s ease both`, animationDelay: `${idx * 60}ms` }}>
+                          <tr key={item.name + idx} className="border-b border-[#131313] hover:bg-[#111] transition-colors group"
+                            style={{ animation: `cardIn 0.4s ease both`, animationDelay: `${idx * 40}ms` }}>
                             <TD align="center">
                               <div className="flex justify-center">
                                 <span className="w-6 h-6 rounded-lg bg-[#1a1a1a] border border-[#2a2a2a] flex items-center justify-center text-[10px] font-black text-[#555]">{idx + 1}</span>
@@ -376,7 +438,7 @@ export default function ReportsPage({ downloadReportRef }) {
                   </table>
                 </div>
               ) : (
-                <EmptyChartState message="No items sold in this period" />
+                <EmptyChartState message={searchQuery ? "No matching items found" : "No items sold in this period"} />
               )}
             </Section>
 
@@ -402,7 +464,7 @@ export default function ReportsPage({ downloadReportRef }) {
                           const avg = row.orders > 0 ? Math.round(row.revenue / row.orders) : 0;
                           return (
                             <tr key={idx} className="border-b border-[#131313] hover:bg-[#111] transition-colors group"
-                              style={{ animation: `cardIn 0.4s ease both`, animationDelay: `${idx * 50}ms` }}>
+                              style={{ animation: `cardIn 0.4s ease both`, animationDelay: `${idx * 40}ms` }}>
                               <TD align="left">
                                 <div className="flex items-center gap-2">
                                   <ChevronRight size={12} className="text-[#2a2a2a] group-hover:text-[#f5c27a] transition-colors flex-shrink-0" />
@@ -461,4 +523,8 @@ export default function ReportsPage({ downloadReportRef }) {
       </div>
     </>
   );
-}
+});
+
+ReportsPage.displayName = "ReportsPage";
+
+export default ReportsPage;
