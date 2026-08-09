@@ -1,14 +1,14 @@
-import React, { useState, useEffect, useCallback, useImperativeHandle, forwardRef } from "react";
+import React, { useState, useEffect, useRef, useCallback, useImperativeHandle, forwardRef } from "react";
 import * as XLSX from "xlsx";
 import API from "../../../api/axiosConfig";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
-  Tooltip, Area, AreaChart, ResponsiveContainer,
+  Tooltip, Area, AreaChart,
 } from "recharts";
 import {
   TrendingUp, TrendingDown, ShoppingBag, CalendarCheck,
   IndianRupee, Award, BarChart2, ChevronRight, Minus, Package,
-  Search, ArrowUpDown, ArrowUp, ArrowDown,
+  Search, ArrowUpDown, ArrowUp, ArrowDown, AlertCircle,
 } from "lucide-react";
 
 const TABS = ["Weekly", "Monthly", "Annual"];
@@ -31,7 +31,7 @@ function alphaColor(hex, alphaHex = "18") {
 function CustomTooltip({ active, payload, label }) {
   if (!active || !payload?.length) return null;
   return (
-    <div className="bg-[#111] border border-[#2a2a2a] rounded-xl px-4 py-3 shadow-2xl">
+    <div className="bg-[#111] border border-[#2a2a2a] rounded-xl px-4 py-3 shadow-2xl z-50">
       <p className="text-[10px] font-black uppercase tracking-widest text-[#888] mb-2">{label}</p>
       {payload.map((p, i) => (
         <div key={i} className="flex items-center gap-2 text-xs font-bold">
@@ -83,7 +83,7 @@ function StatCard({ label, value, sub, icon: Icon, color, bg, border, delay = 0,
 
 function Section({ title, subtitle, headerAction, children }) {
   return (
-    <div className="rounded-2xl overflow-hidden border border-[#1f1f1f] bg-[#0d0d0d]">
+    <div className="rounded-2xl overflow-hidden border border-[#1f1f1f] bg-[#0d0d0d] min-w-0">
       <div className="px-6 py-4 border-b border-[#1a1a1a] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h3 className="text-sm font-black text-[#f1f1f1]">{title}</h3>
@@ -113,7 +113,7 @@ function Skeleton() {
 
 function TH({ children, align = "left", onClick, sortable = false }) {
   return (
-    <th 
+    <th
       onClick={onClick}
       className={`px-5 py-3.5 text-[9px] font-black uppercase tracking-[0.25em] text-[#444] ${ALIGN_CLASSES[align]} ${sortable ? "cursor-pointer select-none hover:text-[#888] transition-colors" : ""}`}
     >
@@ -137,13 +137,50 @@ function EmptyChartState({ message = "No data for this period" }) {
   );
 }
 
+// SafeChartWrapper: measures its own width with ResizeObserver and passes
+// explicit numeric width/height straight to the chart (AreaChart/BarChart
+// both accept these directly). This deliberately avoids Recharts'
+// <ResponsiveContainer>, which is the actual source of the
+// "width(-1) and height(-1)" warning — it logs that on its own first
+// render before its internal ResizeObserver has fired, regardless of
+// whether the parent is already sized correctly. Skipping it removes the
+// warning at the source instead of racing against it.
+function SafeChartWrapper({ children, height = 230 }) {
+  const containerRef = useRef(null);
+  const [width, setWidth] = useState(0);
+
+  useEffect(() => {
+    const element = containerRef.current;
+    if (!element) return;
+
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const w = Math.floor(entry.contentRect.width);
+        if (w > 0) setWidth(w);
+      }
+    });
+
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, []);
+
+  return (
+    <div ref={containerRef} className="w-full relative" style={{ height }}>
+      {width > 0 ? (
+        React.cloneElement(children, { width, height })
+      ) : (
+        <div className="w-full bg-[#0d0d0d] animate-pulse rounded-xl" style={{ height }} />
+      )}
+    </div>
+  );
+}
+
 const ReportsPage = forwardRef((props, ref) => {
   const [activeTab, setActiveTab] = useState("Weekly");
   const [data, setData]           = useState(null);
   const [loading, setLoading]     = useState(true);
-  const [error, setError]         = useState(false);
+  const [error, setError]         = useState(null);
 
-  // Interactive sorting & search states
   const [searchQuery, setSearchQuery] = useState("");
   const [sortField, setSortField]     = useState("totalRevenue");
   const [sortOrder, setSortOrder]     = useState("desc");
@@ -151,15 +188,19 @@ const ReportsPage = forwardRef((props, ref) => {
   useEffect(() => {
     const fetchReport = async () => {
       setLoading(true);
-      setError(false);
+      setError(null);
       setData(null);
       try {
         const { data: res } = await API.get(`/reports/${activeTab.toLowerCase()}`);
         if (res.success === false) throw new Error(res.message || "Report failed");
         setData(res);
       } catch (err) {
-        console.error("Failed to fetch report:", err.message);
-        setError(true);
+        console.error("Failed to fetch report:", err);
+        if (err.response?.status === 401) {
+          setError("Session expired or unauthorized. Please log in again.");
+        } else {
+          setError(err.message || "Failed to load report data.");
+        }
       } finally {
         setLoading(false);
       }
@@ -214,10 +255,9 @@ const ReportsPage = forwardRef((props, ref) => {
       XLSX.utils.book_append_sheet(wb, wsItems, "Top Items");
     }
 
-    XLSX.writeFile(wb, `dosaatelier_Report_${activeTab}_${dateSlug}.xlsx`);
+    XLSX.writeFile(wb, `Report_${activeTab}_${dateSlug}.xlsx`);
   }, [data, activeTab]);
 
-  // Standard React Imperative Handle pattern for triggering export from parent
   useImperativeHandle(ref, () => ({
     exportToExcel,
   }));
@@ -233,9 +273,9 @@ const ReportsPage = forwardRef((props, ref) => {
 
   const filteredAndSortedItems = React.useMemo(() => {
     if (!data?.topItems) return [];
-    
+
     return data.topItems
-      .filter((item) => 
+      .filter((item) =>
         item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         (item.category && item.category.toLowerCase().includes(searchQuery.toLowerCase()))
       )
@@ -271,7 +311,7 @@ const ReportsPage = forwardRef((props, ref) => {
         .report-fade { animation: fadeIn 0.4s ease both; }
       `}</style>
 
-      <div className="space-y-7">
+      <div className="space-y-7 min-w-0">
         <div className="flex items-center gap-1 p-1 rounded-xl bg-[#111] border border-[#1f1f1f] w-fit">
           {TABS.map((tab) => (
             <button key={tab} onClick={() => setActiveTab(tab)}
@@ -287,28 +327,28 @@ const ReportsPage = forwardRef((props, ref) => {
         {error && !loading && (
           <div className="rounded-2xl p-10 text-center bg-[#0d0d0d] border border-[#2a1a1a]">
             <div className="w-12 h-12 rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center justify-center mx-auto mb-4">
-              <BarChart2 size={20} className="text-red-400" />
+              <AlertCircle size={20} className="text-red-400" />
             </div>
-            <p className="text-sm font-black text-[#f1f1f1] mb-1">Failed to load report</p>
-            <p className="text-xs text-[#555]">Make sure the backend is running and try again.</p>
+            <p className="text-sm font-black text-[#f1f1f1] mb-1">Authorization or Network Error</p>
+            <p className="text-xs text-[#888]">{error}</p>
           </div>
         )}
 
         {!loading && !error && data && (
-          <div className="space-y-6 report-fade">
+          <div className="space-y-6 report-fade min-w-0">
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
               {stats.map((s, i) => <StatCard key={s.label} {...s} delay={i * 80} />)}
             </div>
 
             {data.breakdown?.length > 0 ? (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 min-w-0">
                 <Section title="Revenue Trend" subtitle={`${activeTab} breakdown`}>
-                  <div className="p-5 h-[230px] w-full">
-                    <ResponsiveContainer width="100%" height="100%">
+                  <div className="p-5">
+                    <SafeChartWrapper key={`revenue-${activeTab}`}>
                       <AreaChart data={data.breakdown} margin={{ top: 5, right: 5, left: 0, bottom: 0 }}>
                         <defs>
                           <linearGradient id="revGrad" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%"  stopColor="#34d399" stopOpacity={0.25} />
+                            <stop offset="5%" stopColor="#34d399" stopOpacity={0.25} />
                             <stop offset="95%" stopColor="#34d399" stopOpacity={0} />
                           </linearGradient>
                         </defs>
@@ -320,22 +360,22 @@ const ReportsPage = forwardRef((props, ref) => {
                         <Area type="monotone" dataKey="revenue" name="Revenue" stroke="#34d399" strokeWidth={2}
                           fill="url(#revGrad)" dot={{ r: 3, fill: "#34d399", strokeWidth: 0 }} activeDot={{ r: 5, fill: "#34d399" }} />
                       </AreaChart>
-                    </ResponsiveContainer>
+                    </SafeChartWrapper>
                   </div>
                 </Section>
 
                 <Section title="Orders & Reservations" subtitle="side by side">
-                  <div className="p-5 h-[230px] w-full">
-                    <ResponsiveContainer width="100%" height="100%">
+                  <div className="p-5">
+                    <SafeChartWrapper key={`orders-${activeTab}`}>
                       <BarChart data={data.breakdown} margin={{ top: 5, right: 5, left: 0, bottom: 0 }} barGap={4}>
                         <CartesianGrid strokeDasharray="3 3" stroke="#1a1a1a" vertical={false} />
                         <XAxis dataKey="period" stroke="#2a2a2a" tick={{ fill: "#555", fontSize: 10 }} />
                         <YAxis stroke="#2a2a2a" tick={{ fill: "#555", fontSize: 10 }} />
                         <Tooltip content={<CustomTooltip />} />
-                        <Bar dataKey="orders"       name="Orders"       fill="#f5c27a" radius={[4, 4, 0, 0]} maxBarSize={28} />
+                        <Bar dataKey="orders" name="Orders" fill="#f5c27a" radius={[4, 4, 0, 0]} maxBarSize={28} />
                         <Bar dataKey="reservations" name="Reservations" fill="#60a5fa" radius={[4, 4, 0, 0]} maxBarSize={28} />
                       </BarChart>
-                    </ResponsiveContainer>
+                    </SafeChartWrapper>
                   </div>
                 </Section>
               </div>
@@ -345,16 +385,16 @@ const ReportsPage = forwardRef((props, ref) => {
               </Section>
             )}
 
-            <Section 
-              title="Top Selling Items" 
+            <Section
+              title="Top Selling Items"
               subtitle={`best performers this ${activeTab.toLowerCase()} period`}
               headerAction={
                 data.topItems?.length > 0 && (
                   <div className="relative">
                     <Search size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#555]" />
-                    <input 
-                      type="text" 
-                      placeholder="Search items..." 
+                    <input
+                      type="text"
+                      placeholder="Search items..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       className="bg-[#141414] border border-[#222] text-[#f1f1f1] text-xs rounded-lg pl-8 pr-3 py-1.5 focus:outline-none focus:border-[#f5c27a] transition-colors w-full sm:w-48"
